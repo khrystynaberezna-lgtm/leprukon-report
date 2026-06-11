@@ -429,6 +429,46 @@ ORDER BY merchant_price_uah DESC
 LIMIT 15
 """
 
+NETWORK_SUMMARY = f"""
+SELECT
+  (SELECT COUNT(*) FROM hive_metastore.ng_delivery_spark.dim_provider_v2
+   WHERE country_code = 'ua' AND group_name = '{PARTNER_NAME}') AS stores_in_base,
+  COUNT(DISTINCT f.provider_id) AS stores_ever_active,
+  COUNT(DISTINCT CASE WHEN f.order_created_date >= DATE_SUB(CURRENT_DATE(), 30) THEN f.provider_id END) AS active_30d,
+  MIN(f.order_created_date) AS first_order_date
+FROM hive_metastore.ng_delivery_spark.fact_order_delivery f
+  JOIN hive_metastore.ng_delivery_spark.dim_provider_v2 p ON f.provider_id = p.provider_id
+WHERE p.country_code = 'ua'
+  AND p.group_name = '{PARTNER_NAME}'
+  AND f.order_state = 'delivered'
+"""
+
+NETWORK_ACTIVATION_MONTHLY = f"""
+WITH first_order AS (
+  SELECT f.provider_id, MIN(f.order_created_date) AS first_dt
+  FROM hive_metastore.ng_delivery_spark.fact_order_delivery f
+    JOIN hive_metastore.ng_delivery_spark.dim_provider_v2 p ON f.provider_id = p.provider_id
+  WHERE p.country_code = 'ua' AND p.group_name = '{PARTNER_NAME}' AND f.order_state = 'delivered'
+  GROUP BY f.provider_id
+)
+SELECT
+  DATE_FORMAT(f.order_created_date, 'yyyy-MM') AS period,
+  COUNT(DISTINCT f.provider_id) AS active_stores,
+  COUNT(DISTINCT CASE WHEN DATE_FORMAT(fo.first_dt, 'yyyy-MM') = DATE_FORMAT(f.order_created_date, 'yyyy-MM')
+                      THEN f.provider_id END) AS new_stores,
+  COUNT(*) AS orders
+FROM hive_metastore.ng_delivery_spark.fact_order_delivery f
+  JOIN hive_metastore.ng_delivery_spark.dim_provider_v2 p ON f.provider_id = p.provider_id
+  JOIN first_order fo ON fo.provider_id = f.provider_id
+WHERE p.country_code = 'ua'
+  AND p.group_name = '{PARTNER_NAME}'
+  AND f.order_state = 'delivered'
+  AND f.order_created_date >= '{DATA_START}'
+  AND f.order_created_date <= '{DATA_END}'
+GROUP BY 1
+ORDER BY 1
+"""
+
 
 def main():
     print(f"Partner: {PARTNER_DISPLAY} ({PARTNER_NAME})")
@@ -470,6 +510,10 @@ def main():
     print("Fetching top stores...")
     top_stores = to_serializable(run_query(cursor, TOP_STORES_LAST_MONTH))
 
+    print("Fetching network activation...")
+    net_summary = to_serializable(run_query(cursor, NETWORK_SUMMARY))
+    net_activation = to_serializable(run_query(cursor, NETWORK_ACTIVATION_MONTHLY))
+
     cursor.close()
     conn.close()
 
@@ -501,6 +545,10 @@ def main():
         },
         "acceptance_current": aa_current,
         "top_stores": top_stores,
+        "network": {
+            "summary": net_summary[0] if net_summary else {},
+            "activation": net_activation,
+        },
     }
 
     DATA_PATH.write_text(

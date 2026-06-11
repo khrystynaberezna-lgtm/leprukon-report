@@ -90,6 +90,21 @@ tr:hover{background:#f9fafb}
   <div class="grid-6" id="m-kpi-cards"></div>
 </div>
 
+<div class="divider"></div>
+
+<!-- 0. NETWORK ACTIVATION -->
+<div class="section" id="m-activation">
+  <h2>Активація мережі</h2>
+  <div class="grid-4" id="m-activation-cards"></div>
+  <div class="grid-2" style="margin-top:14px">
+    <div class="card"><h3>Активні заклади та нові підключення по місяцях</h3><div class="chart-box"><canvas id="m-cActivation"></canvas></div></div>
+    <div class="card"><h3>Накопичено активованих закладів</h3><div class="chart-box"><canvas id="m-cActivationCum"></canvas></div></div>
+  </div>
+  <div class="insight action" style="margin-top:12px" id="m-activation-note"></div>
+</div>
+
+<div class="divider"></div>
+
 <!-- 1. GROWTH & SALES -->
 <div class="section" id="m-sales">
   <h2>1. Зростання та обсяги продажів</h2>
@@ -513,6 +528,53 @@ function renderCharts(prefix, data, labelFn) {
 // ─── Monthly data rendering ───
 renderKPICards('m-kpi-cards', mData, shortMonth);
 renderCharts('m', mData, shortMonth);
+
+// ─── Network activation ───
+(function renderActivation(){
+  const net = D.network || {};
+  const s = net.summary || {};
+  const act = net.activation || [];
+  const base = Number(s.stores_in_base) || 0;
+  const ever = Number(s.stores_ever_active) || 0;
+  const a30 = Number(s.active_30d) || 0;
+  const firstDt = s.first_order_date ? String(s.first_order_date).slice(0,10) : '—';
+
+  const cardsEl = document.getElementById('m-activation-cards');
+  if (cardsEl) {
+    const cards = [
+      {label:'Закладів у мережі', value: fmt(base), sub:''},
+      {label:'Активовано (продавали)', value: fmt(ever), sub: base ? n(ever/base*100,0)+'% мережі' : ''},
+      {label:'Активні за 30 днів', value: fmt(a30), sub: base ? n(a30/base*100,0)+'% мережі' : ''},
+      {label:'На доставці з', value: firstDt, sub:''},
+    ];
+    cardsEl.innerHTML = cards.map(c =>
+      `<div class="card kpi"><div class="kpi-label">${c.label}</div><div class="kpi-value">${c.value}</div><div class="kpi-sub stable">${c.sub}</div></div>`
+    ).join('');
+  }
+
+  if (act.length) {
+    const labels = act.map(d => shortMonth(d.period));
+    new Chart(document.getElementById('m-cActivation'), {data:{labels, datasets:[
+      {type:'bar', label:'Активні заклади', data:act.map(d=>d.active_stores), backgroundColor:'rgba(52,209,134,0.5)', borderRadius:3, yAxisID:'y'},
+      {type:'bar', label:'Нові заклади', data:act.map(d=>d.new_stores), backgroundColor:'rgba(37,99,235,0.5)', borderRadius:3, yAxisID:'y'},
+      {type:'line', label:'Замовлення', data:act.map(d=>d.orders), borderColor:'#ea580c', tension:.3, fill:false, yAxisID:'y1'}
+    ]}, options:dualY('Заклади','Замовлення')});
+
+    let cum = 0;
+    const cumData = act.map(d => { cum += Number(d.new_stores)||0; return cum; });
+    new Chart(document.getElementById('m-cActivationCum'), {type:'line', data:{labels, datasets:[
+      {label:'Активовано закладів (накопич.)', data:cumData, borderColor:'#34D186', backgroundColor:'rgba(52,209,134,0.08)', fill:true, tension:.3, pointRadius:4},
+      {label:'Усього в мережі', data:labels.map(()=>base), borderColor:'#9ca3af', borderDash:[6,4], pointRadius:0, fill:false}
+    ]}, options:{...defOpts, scales:{...defOpts.scales, y:{...defOpts.scales.y, beginAtZero:true, suggestedMax: base+1}}}});
+  }
+
+  const noteEl = document.getElementById('m-activation-note');
+  if (noteEl) {
+    const inactive = Math.max(base - ever, 0);
+    noteEl.innerHTML = `<div class="insight-title">Головна точка зростання — активація мережі</div>`
+      + `<div class="insight-text">З <b>${base}</b> закладів мережі на доставці Bolt Food хоч раз продавали <b>${ever}</b> (${base?Math.round(ever/base*100):0}%), активні за останні 30 днів — <b>${a30}</b>. Ще <b>${inactive}</b> закладів поки не приймають замовлення. Основний потенціал зростання — підключення та розгін решти точок.</div>`;
+  }
+})();
 
 // Monthly sales table
 {
