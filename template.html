@@ -95,7 +95,7 @@ tr:hover{background:#f9fafb}
 <!-- 0. NETWORK ACTIVATION -->
 <div class="section" id="m-activation">
   <h2>Активація мережі</h2>
-  <div class="grid-4" id="m-activation-cards"></div>
+  <div class="grid-3" id="m-activation-cards"></div>
   <div class="grid-2" style="margin-top:14px">
     <div class="card"><h3>Активні заклади та нові підключення по місяцях</h3><div class="chart-box"><canvas id="m-cActivation"></canvas></div></div>
     <div class="card"><h3>Накопичено активованих закладів</h3><div class="chart-box"><canvas id="m-cActivationCum"></canvas></div></div>
@@ -545,7 +545,6 @@ renderCharts('m', mData, shortMonth);
       {label:'Закладів у мережі', value: fmt(base), sub:''},
       {label:'Активовано (продавали)', value: fmt(ever), sub: base ? n(ever/base*100,0)+'% мережі' : ''},
       {label:'Активні за 30 днів', value: fmt(a30), sub: base ? n(a30/base*100,0)+'% мережі' : ''},
-      {label:'На доставці з', value: firstDt, sub:''},
     ];
     cardsEl.innerHTML = cards.map(c =>
       `<div class="card kpi"><div class="kpi-label">${c.label}</div><div class="kpi-value">${c.value}</div><div class="kpi-sub stable">${c.sub}</div></div>`
