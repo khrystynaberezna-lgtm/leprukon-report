@@ -47,7 +47,8 @@ tr:hover{background:#f9fafb}
 .store-row{display:flex;align-items:center;gap:8px;margin-bottom:5px}
 .store-name{font-size:11px;min-width:340px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bar-bg{flex:1;height:18px;background:#f3f4f6;border-radius:3px;overflow:hidden}
-.bar-fill{height:100%;border-radius:3px;display:flex;align-items:center;padding-left:6px;font-size:10px;font-weight:600;color:#fff;min-width:24px}
+.bar-fill{height:100%;border-radius:3px;min-width:4px}
+.bar-val{font-size:11px;font-weight:600;color:var(--text);white-space:nowrap;min-width:150px}
 
 /* Tab navigation */
 .tab-nav{display:flex;gap:4px;margin-bottom:24px;border-bottom:2px solid var(--border);padding-bottom:0}
@@ -730,7 +731,7 @@ renderCharts('m', mData, shortMonth);
     container.innerHTML = stores.map(s => {
       if (!cityColors[s.city_name]) cityColors[s.city_name] = palette[ci++ % palette.length];
       const pctWidth = (Number(s.merchant_price_uah) / maxVal * 100).toFixed(0);
-      return `<div class="store-row"><span class="store-name">${s.provider_name} · ${s.city_name}</span><div class="bar-bg"><div class="bar-fill" style="width:${pctWidth}%;background:${cityColors[s.city_name]}">${uah(s.merchant_price_uah)} · ${fmt(s.orders)} зам.</div></div></div>`;
+      return `<div class="store-row"><span class="store-name">${s.provider_name} · ${s.city_name}</span><div class="bar-bg"><div class="bar-fill" style="width:${pctWidth}%;background:${cityColors[s.city_name]}"></div></div><span class="bar-val">${uah(s.merchant_price_uah)} · ${fmt(s.orders)} зам.</span></div>`;
     }).join('');
   }
 }
