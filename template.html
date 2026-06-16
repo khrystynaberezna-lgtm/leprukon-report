@@ -93,19 +93,6 @@ tr:hover{background:#f9fafb}
 
 <div class="divider"></div>
 
-<!-- 0. NETWORK ACTIVATION -->
-<div class="section" id="m-activation">
-  <h2>Активація мережі</h2>
-  <div class="grid-3" id="m-activation-cards"></div>
-  <div class="grid-2" style="margin-top:14px">
-    <div class="card"><h3>Активні заклади та нові підключення по місяцях</h3><div class="chart-box"><canvas id="m-cActivation"></canvas></div></div>
-    <div class="card"><h3>Накопичено активованих закладів</h3><div class="chart-box"><canvas id="m-cActivationCum"></canvas></div></div>
-  </div>
-  <div class="insight action" style="margin-top:12px" id="m-activation-note"></div>
-</div>
-
-<div class="divider"></div>
-
 <!-- 1. GROWTH & SALES -->
 <div class="section" id="m-sales">
   <h2>1. Зростання та обсяги продажів</h2>
@@ -151,6 +138,14 @@ tr:hover{background:#f9fafb}
     <div class="card"><h3>Активні заклади / Доступність, %</h3><div class="chart-box"><canvas id="m-cMerchants"></canvas></div></div>
     <div class="card"><h3>Рейтинг закладів від клієнтів</h3><div class="chart-box"><canvas id="m-cRating"></canvas></div></div>
   </div>
+  <div class="divider" style="margin:20px 0"></div>
+  <h3 style="font-size:16px;margin-bottom:14px">Активація мережі</h3>
+  <div class="grid-3" id="m-activation-cards"></div>
+  <div class="grid-2" style="margin-top:14px">
+    <div class="card"><h3>Активні заклади та нові підключення по місяцях</h3><div class="chart-box"><canvas id="m-cActivation"></canvas></div></div>
+    <div class="card"><h3>Накопичено активованих закладів</h3><div class="chart-box"><canvas id="m-cActivationCum"></canvas></div></div>
+  </div>
+  <div class="insight action" style="margin-top:12px" id="m-activation-note"></div>
   <div class="card" style="margin-top:14px">
     <h3>Зведена таблиця операційних показників</h3>
     <div style="overflow-x:auto"><table id="m-ops-table"></table></div>
@@ -382,8 +377,32 @@ function reasonLabel(reason, actor) {
     'cannot_find_courier|provider': 'Не знайдено кур\'єра',
     'manually_failed_by_user|client': 'Скасування клієнтом',
     'automatically_failed|bolt': 'Автоматичне скасування',
+    'closed|provider': 'Заклад зачинений',
+    'do_not_wish_to_serve_this_client|provider': 'Заклад відмовив клієнту',
+    'items_out_of_stock|provider': 'Немає товару в наявності',
+    'other|provider': 'Інше (заклад)',
   };
-  return labels[reason+'|'+actor] || reason + ' (' + actor + ')';
+  const reasonsUA = {
+    'manually_failed_by_cs': 'Скасовано через CS',
+    'did_not_respond': 'Заклад не відповів',
+    'cannot_find_courier': 'Не знайдено кур\'єра',
+    'manually_failed_by_user': 'Скасування клієнтом',
+    'automatically_failed': 'Автоматичне скасування',
+    'closed': 'Заклад зачинений',
+    'do_not_wish_to_serve_this_client': 'Заклад відмовив клієнту',
+    'items_out_of_stock': 'Немає товару в наявності',
+    'out_of_stock': 'Немає товару в наявності',
+    'too_busy': 'Заклад перевантажений',
+    'other': 'Інше',
+  };
+  const actorsUA = {provider: 'заклад', bolt: 'Bolt', courier: 'кур\'єр', client: 'клієнт', system: 'система'};
+  if (labels[reason+'|'+actor]) return labels[reason+'|'+actor];
+  if (reasonsUA[reason]) {
+    const a = actorsUA[actor];
+    return reasonsUA[reason] + (a ? ' (' + a + ')' : '');
+  }
+  const a = actorsUA[actor] || actor || '';
+  return (reason || '—').replace(/_/g, ' ') + (a ? ' (' + a + ')' : '');
 }
 
 const REASON_COLORS = {
@@ -394,6 +413,10 @@ const REASON_COLORS = {
   'cannot_find_courier|provider': '#2563eb',
   'manually_failed_by_user|client': '#6b7280',
   'automatically_failed|bolt': '#0891b2',
+  'closed|provider': '#16a34a',
+  'do_not_wish_to_serve_this_client|provider': '#db2777',
+  'items_out_of_stock|provider': '#0d9488',
+  'other|provider': '#a16207',
 };
 
 // ─── Tab switching ───
@@ -445,7 +468,10 @@ function renderKPICards(containerId, data, labelFn) {
 function renderCharts(prefix, data, labelFn) {
   const labels = data.map(d => labelFn(d.period));
 
-  new Chart(document.getElementById(prefix+'-cGMV'), {type:'bar', data:{labels, datasets:[{label:'Продажі партнера (₴)', data:data.map(d=>d.fin_merchant_price_uah), backgroundColor:'rgba(52,209,134,0.5)', borderRadius:4}]}, options:defOpts});
+  new Chart(document.getElementById(prefix+'-cGMV'), {data:{labels, datasets:[
+    {type:'bar', label:'Продажі партнера (₴)', data:data.map(d=>d.fin_merchant_price_uah), backgroundColor:'rgba(52,209,134,0.5)', borderRadius:4, yAxisID:'y'},
+    {type:'line', label:'Замовлення', data:data.map(d=>d.fin_orders), borderColor:'#ea580c', tension:.3, fill:false, yAxisID:'y1'}
+  ]}, options:dualY('Продажі (₴)','Замовлення')});
 
   new Chart(document.getElementById(prefix+'-cOrders'), {type:'line', data:{labels, datasets:[
     {label:'Доставлені', data:data.map(d=>d.fin_orders), borderColor:'#34D186', backgroundColor:'rgba(52,209,134,0.08)', fill:true, tension:.3},
@@ -555,10 +581,9 @@ renderCharts('m', mData, shortMonth);
   if (act.length) {
     const labels = act.map(d => shortMonth(d.period));
     new Chart(document.getElementById('m-cActivation'), {data:{labels, datasets:[
-      {type:'bar', label:'Активні заклади', data:act.map(d=>d.active_stores), backgroundColor:'rgba(52,209,134,0.5)', borderRadius:3, yAxisID:'y'},
-      {type:'bar', label:'Нові заклади', data:act.map(d=>d.new_stores), backgroundColor:'rgba(37,99,235,0.5)', borderRadius:3, yAxisID:'y'},
-      {type:'line', label:'Замовлення', data:act.map(d=>d.orders), borderColor:'#ea580c', tension:.3, fill:false, yAxisID:'y1'}
-    ]}, options:dualY('Заклади','Замовлення')});
+      {type:'bar', label:'Активні заклади', data:act.map(d=>d.active_stores), backgroundColor:'rgba(52,209,134,0.5)', borderRadius:3},
+      {type:'bar', label:'Нові заклади', data:act.map(d=>d.new_stores), backgroundColor:'rgba(37,99,235,0.5)', borderRadius:3}
+    ]}, options:defOpts});
 
     let cum = 0;
     const cumData = act.map(d => { cum += Number(d.new_stores)||0; return cum; });
