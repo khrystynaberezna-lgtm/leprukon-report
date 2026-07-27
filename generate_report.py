@@ -159,8 +159,8 @@ SELECT
     COUNT(DISTINCT f.user_id) AS active_users,
     SUM(f.total_refunded_amount) / NULLIF(SUM(f.order_gmv), 0) * 100 AS refund_rate_pct,
     SUM(f.order_gmv) / NULLIF(SUM(f.order_gmv_eur), 0) AS eur_uah_rate
-FROM hive_metastore.ng_delivery_spark.fact_order_delivery f
-    JOIN hive_metastore.ng_delivery_spark.dim_provider_v2 p ON f.provider_id = p.provider_id
+FROM main.ng_delivery.fact_order_delivery f
+    JOIN main.ng_delivery.dim_provider_v2 p ON f.provider_id = p.provider_id
 WHERE p.country_code = 'ua'
   AND p.group_name = '{PARTNER_NAME}'
   AND f.order_state = 'delivered'
@@ -182,8 +182,8 @@ SELECT
     COUNT(DISTINCT f.user_id) AS active_users,
     SUM(f.total_refunded_amount) / NULLIF(SUM(f.order_gmv), 0) * 100 AS refund_rate_pct,
     SUM(f.order_gmv) / NULLIF(SUM(f.order_gmv_eur), 0) AS eur_uah_rate
-FROM hive_metastore.ng_delivery_spark.fact_order_delivery f
-    JOIN hive_metastore.ng_delivery_spark.dim_provider_v2 p ON f.provider_id = p.provider_id
+FROM main.ng_delivery.fact_order_delivery f
+    JOIN main.ng_delivery.dim_provider_v2 p ON f.provider_id = p.provider_id
 WHERE p.country_code = 'ua'
   AND p.group_name = '{PARTNER_NAME}'
   AND f.order_state = 'delivered'
@@ -204,8 +204,8 @@ SELECT
     SUM(CASE WHEN f.is_order_late_to_partner_5_min THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) * 100 AS late_pickup_rate,
     AVG(f.order_delivery_minutes) AS avg_delivery_minutes,
     AVG(f.courier_delivery_time_min) AS avg_courier_delivery_min
-FROM hive_metastore.ng_delivery_spark.fact_order_delivery f
-    JOIN hive_metastore.ng_delivery_spark.dim_provider_v2 p ON f.provider_id = p.provider_id
+FROM main.ng_delivery.fact_order_delivery f
+    JOIN main.ng_delivery.dim_provider_v2 p ON f.provider_id = p.provider_id
 WHERE p.country_code = 'ua'
   AND p.group_name = '{PARTNER_NAME}'
   AND f.order_state = 'delivered'
@@ -230,8 +230,8 @@ SELECT
         / NULLIF(SUM(f.order_item_adjustment_rate_weight), 0) * 100, 2) AS adjustment_rate,
     ROUND(SUM(f.order_item_replacement_rate_value * f.order_item_replacement_rate_weight)
         / NULLIF(SUM(f.order_item_replacement_rate_weight), 0) * 100, 2) AS replacement_rate
-FROM hive_metastore.ng_delivery_spark.fact_provider_weekly f
-    JOIN hive_metastore.ng_delivery_spark.dim_provider_v2 p ON f.provider_id = p.provider_id
+FROM main.ng_delivery.fact_provider_weekly f
+    JOIN main.ng_delivery.dim_provider_v2 p ON f.provider_id = p.provider_id
 WHERE p.country_code = 'ua'
   AND p.group_name = '{PARTNER_NAME}'
   AND f.metric_timestamp_local >= '{DATA_START}'
@@ -247,8 +247,8 @@ SELECT
         / NULLIF(SUM(f.order_item_adjustment_rate_weight), 0) * 100, 2) AS adjustment_rate,
     ROUND(SUM(f.order_item_replacement_rate_value * f.order_item_replacement_rate_weight)
         / NULLIF(SUM(f.order_item_replacement_rate_weight), 0) * 100, 2) AS replacement_rate
-FROM hive_metastore.ng_delivery_spark.fact_provider_weekly f
-    JOIN hive_metastore.ng_delivery_spark.dim_provider_v2 p ON f.provider_id = p.provider_id
+FROM main.ng_delivery.fact_provider_weekly f
+    JOIN main.ng_delivery.dim_provider_v2 p ON f.provider_id = p.provider_id
 WHERE p.country_code = 'ua'
   AND p.group_name = '{PARTNER_NAME}'
   AND f.metric_timestamp_local >= '{WEEKLY_START}'
@@ -264,8 +264,8 @@ SELECT
     SUM(CASE WHEN f.order_state = 'delivered' THEN 1 ELSE 0 END) AS delivered,
     SUM(CASE WHEN f.order_state != 'delivered' THEN 1 ELSE 0 END) AS failed_total,
     SUM(CASE WHEN f.order_state != 'delivered' THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) * 100 AS failed_rate_pct
-FROM hive_metastore.ng_delivery_spark.fact_order_delivery f
-    JOIN hive_metastore.ng_delivery_spark.dim_provider_v2 p ON f.provider_id = p.provider_id
+FROM main.ng_delivery.fact_order_delivery f
+    JOIN main.ng_delivery.dim_provider_v2 p ON f.provider_id = p.provider_id
 WHERE p.country_code = 'ua'
   AND p.group_name = '{PARTNER_NAME}'
   AND f.order_created_date >= '{DATA_START}'
@@ -288,9 +288,9 @@ SELECT
     r.reason,
     r.actor_type,
     COUNT(*) AS cnt
-FROM hive_metastore.ng_delivery_spark.delivery_order_order_resolution r
-    JOIN hive_metastore.ng_delivery_spark.fact_order_delivery f ON r.order_id = f.order_id
-    JOIN hive_metastore.ng_delivery_spark.dim_provider_v2 p ON f.provider_id = p.provider_id
+FROM main.ng_delivery.delivery_order_order_resolution r
+    JOIN main.ng_delivery.fact_order_delivery f ON r.order_id = f.order_id
+    JOIN main.ng_delivery.dim_provider_v2 p ON f.provider_id = p.provider_id
 WHERE p.country_code = 'ua'
   AND p.group_name = '{PARTNER_NAME}'
   AND f.order_created_date >= '{DATA_START}'
@@ -306,9 +306,9 @@ SELECT
     r.reason,
     r.actor_type,
     COUNT(*) AS cnt
-FROM hive_metastore.ng_delivery_spark.delivery_order_order_resolution r
-    JOIN hive_metastore.ng_delivery_spark.fact_order_delivery f ON r.order_id = f.order_id
-    JOIN hive_metastore.ng_delivery_spark.dim_provider_v2 p ON f.provider_id = p.provider_id
+FROM main.ng_delivery.delivery_order_order_resolution r
+    JOIN main.ng_delivery.fact_order_delivery f ON r.order_id = f.order_id
+    JOIN main.ng_delivery.dim_provider_v2 p ON f.provider_id = p.provider_id
 WHERE p.country_code = 'ua'
   AND p.group_name = '{PARTNER_NAME}'
   AND f.order_created_date >= '{WEEKLY_START}'
@@ -339,8 +339,8 @@ SELECT
         + COALESCE(f.provider_spend_other_campaign, 0)
     ) AS merchant_spend_eur,
     COUNT(CASE WHEN f.demand_incentives_local > 0 THEN 1 END) AS campaign_orders
-FROM hive_metastore.ng_delivery_spark.fact_order_delivery f
-    JOIN hive_metastore.ng_delivery_spark.dim_provider_v2 p ON f.provider_id = p.provider_id
+FROM main.ng_delivery.fact_order_delivery f
+    JOIN main.ng_delivery.dim_provider_v2 p ON f.provider_id = p.provider_id
 WHERE p.country_code = 'ua'
   AND p.group_name = '{PARTNER_NAME}'
   AND f.order_state = 'delivered'
@@ -366,8 +366,8 @@ SELECT
         / NULLIF(SUM(f.provider_active_rate_weight), 0) * 100, 1) AS availability_rate,
     ROUND(SUM(f.provider_rating_per_order_value * f.provider_rating_per_order_weight)
         / NULLIF(SUM(f.provider_rating_per_order_weight), 0), 3) AS avg_rating
-FROM hive_metastore.ng_delivery_spark.fact_provider_weekly f
-    JOIN hive_metastore.ng_delivery_spark.dim_provider_v2 p ON f.provider_id = p.provider_id
+FROM main.ng_delivery.fact_provider_weekly f
+    JOIN main.ng_delivery.dim_provider_v2 p ON f.provider_id = p.provider_id
 WHERE p.country_code = 'ua'
   AND p.group_name = '{PARTNER_NAME}'
   AND f.metric_timestamp_local >= DATE_SUB(CURRENT_DATE(), 7)
@@ -382,8 +382,8 @@ SELECT
         / NULLIF(SUM(f.provider_active_rate_weight), 0) * 100, 1) AS availability_rate,
     ROUND(SUM(f.provider_rating_per_order_value * f.provider_rating_per_order_weight)
         / NULLIF(SUM(f.provider_rating_per_order_weight), 0), 3) AS avg_rating
-FROM hive_metastore.ng_delivery_spark.fact_provider_weekly f
-    JOIN hive_metastore.ng_delivery_spark.dim_provider_v2 p ON f.provider_id = p.provider_id
+FROM main.ng_delivery.fact_provider_weekly f
+    JOIN main.ng_delivery.dim_provider_v2 p ON f.provider_id = p.provider_id
 WHERE p.country_code = 'ua'
   AND p.group_name = '{PARTNER_NAME}'
   AND f.metric_timestamp_local >= '{DATA_START}'
@@ -401,8 +401,8 @@ SELECT
         / NULLIF(SUM(f.provider_active_rate_weight), 0) * 100, 1) AS availability_rate,
     ROUND(SUM(f.provider_rating_per_order_value * f.provider_rating_per_order_weight)
         / NULLIF(SUM(f.provider_rating_per_order_weight), 0), 3) AS avg_rating
-FROM hive_metastore.ng_delivery_spark.fact_provider_weekly f
-    JOIN hive_metastore.ng_delivery_spark.dim_provider_v2 p ON f.provider_id = p.provider_id
+FROM main.ng_delivery.fact_provider_weekly f
+    JOIN main.ng_delivery.dim_provider_v2 p ON f.provider_id = p.provider_id
 WHERE p.country_code = 'ua'
   AND p.group_name = '{PARTNER_NAME}'
   AND f.metric_timestamp_local >= '{WEEKLY_START}'
@@ -417,8 +417,8 @@ SELECT
     f.city_name,
     COUNT(*) AS orders,
     SUM(f.provider_price_before_discount) AS merchant_price_uah
-FROM hive_metastore.ng_delivery_spark.fact_order_delivery f
-    JOIN hive_metastore.ng_delivery_spark.dim_provider_v2 p ON f.provider_id = p.provider_id
+FROM main.ng_delivery.fact_order_delivery f
+    JOIN main.ng_delivery.dim_provider_v2 p ON f.provider_id = p.provider_id
 WHERE p.country_code = 'ua'
   AND p.group_name = '{PARTNER_NAME}'
   AND f.order_state = 'delivered'
@@ -431,13 +431,13 @@ LIMIT 15
 
 NETWORK_SUMMARY = f"""
 SELECT
-  (SELECT COUNT(*) FROM hive_metastore.ng_delivery_spark.dim_provider_v2
+  (SELECT COUNT(*) FROM main.ng_delivery.dim_provider_v2
    WHERE country_code = 'ua' AND group_name = '{PARTNER_NAME}') AS stores_in_base,
   COUNT(DISTINCT f.provider_id) AS stores_ever_active,
   COUNT(DISTINCT CASE WHEN f.order_created_date >= DATE_SUB(CURRENT_DATE(), 30) THEN f.provider_id END) AS active_30d,
   MIN(f.order_created_date) AS first_order_date
-FROM hive_metastore.ng_delivery_spark.fact_order_delivery f
-  JOIN hive_metastore.ng_delivery_spark.dim_provider_v2 p ON f.provider_id = p.provider_id
+FROM main.ng_delivery.fact_order_delivery f
+  JOIN main.ng_delivery.dim_provider_v2 p ON f.provider_id = p.provider_id
 WHERE p.country_code = 'ua'
   AND p.group_name = '{PARTNER_NAME}'
   AND f.order_state = 'delivered'
@@ -446,8 +446,8 @@ WHERE p.country_code = 'ua'
 NETWORK_ACTIVATION_MONTHLY = f"""
 WITH first_order AS (
   SELECT f.provider_id, MIN(f.order_created_date) AS first_dt
-  FROM hive_metastore.ng_delivery_spark.fact_order_delivery f
-    JOIN hive_metastore.ng_delivery_spark.dim_provider_v2 p ON f.provider_id = p.provider_id
+  FROM main.ng_delivery.fact_order_delivery f
+    JOIN main.ng_delivery.dim_provider_v2 p ON f.provider_id = p.provider_id
   WHERE p.country_code = 'ua' AND p.group_name = '{PARTNER_NAME}' AND f.order_state = 'delivered'
   GROUP BY f.provider_id
 )
@@ -457,8 +457,8 @@ SELECT
   COUNT(DISTINCT CASE WHEN DATE_FORMAT(fo.first_dt, 'yyyy-MM') = DATE_FORMAT(f.order_created_date, 'yyyy-MM')
                       THEN f.provider_id END) AS new_stores,
   COUNT(*) AS orders
-FROM hive_metastore.ng_delivery_spark.fact_order_delivery f
-  JOIN hive_metastore.ng_delivery_spark.dim_provider_v2 p ON f.provider_id = p.provider_id
+FROM main.ng_delivery.fact_order_delivery f
+  JOIN main.ng_delivery.dim_provider_v2 p ON f.provider_id = p.provider_id
   JOIN first_order fo ON fo.provider_id = f.provider_id
 WHERE p.country_code = 'ua'
   AND p.group_name = '{PARTNER_NAME}'

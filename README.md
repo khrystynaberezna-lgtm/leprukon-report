@@ -35,7 +35,7 @@ LEPRUKON/
 Коли SQL Warehouse доступний, виконай:
 ```sql
 SELECT group_name, COUNT(*) AS stores
-FROM hive_metastore.ng_delivery_spark.dim_provider_v2
+FROM main.ng_delivery.dim_provider_v2
 WHERE country_code='ua' AND (LOWER(group_name) LIKE '%lepr%' OR group_name LIKE '%Лепр%')
 GROUP BY group_name ORDER BY stores DESC LIMIT 50;
 ```
