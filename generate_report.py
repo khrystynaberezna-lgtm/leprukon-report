@@ -466,6 +466,28 @@ GROUP BY 1
 ORDER BY 1
 """
 
+STORE_ACTIVITY_WEEKLY = f"""
+SELECT
+    DATE_FORMAT(f.metric_timestamp_local, 'yyyy-MM-dd') AS week,
+    p.provider_id,
+    p.provider_name,
+    p.city_name,
+    ROUND(SUM(f.provider_acceptance_rate_value * f.provider_acceptance_rate_weight)
+        / NULLIF(SUM(f.provider_acceptance_rate_weight), 0) * 100, 1) AS acceptance_rate,
+    ROUND(SUM(f.provider_active_rate_value * f.provider_active_rate_weight)
+        / NULLIF(SUM(f.provider_active_rate_weight), 0) * 100, 1) AS availability_rate
+FROM main.ng_delivery.fact_provider_weekly f
+    JOIN main.ng_delivery.dim_provider_v2 p ON f.provider_id = p.provider_id
+WHERE p.country_code = 'ua'
+  AND p.group_name = '{PARTNER_NAME}'
+  AND lower(p.provider_name) <> 'deleted'
+  AND f.metric_timestamp_local >= '{WEEKLY_START}'
+  AND f.metric_timestamp_local <= '{WEEKLY_END}'
+GROUP BY 1, 2, 3, 4
+ORDER BY 3, 1
+LIMIT 5000
+"""
+
 
 def main():
     print(f"Partner: {PARTNER_DISPLAY} ({PARTNER_NAME})")
@@ -511,6 +533,9 @@ def main():
     net_summary = to_serializable(run_query(cursor, NETWORK_SUMMARY))
     net_activation = to_serializable(run_query(cursor, NETWORK_ACTIVATION_MONTHLY))
 
+    print("Fetching per-store weekly activity...")
+    store_activity = to_serializable(run_query(cursor, STORE_ACTIVITY_WEEKLY))
+
     cursor.close()
     conn.close()
 
@@ -546,6 +571,7 @@ def main():
             "summary": net_summary[0] if net_summary else {},
             "activation": net_activation,
         },
+        "store_activity": store_activity,
     }
 
     DATA_PATH.write_text(
