@@ -175,7 +175,7 @@ tr:hover{background:#f9fafb}
 <div class="section" id="m-invest">
   <h2>4. Інвестиції у зростання партнерства</h2>
   <div class="grid-2">
-    <div class="card"><h3>Знижки по кампаніях, ₴</h3><div class="chart-box"><canvas id="m-cInvest"></canvas></div></div>
+    <div class="card"><h3>Знижки клієнтам, ₴</h3><div class="chart-box"><canvas id="m-cInvest"></canvas></div></div>
     <div class="card"><h3>Кампанійні замовлення / Знижка % від продажів</h3><div class="chart-box"><canvas id="m-cCampOrders"></canvas></div></div>
   </div>
   <div class="card" style="margin-top:14px">
@@ -277,7 +277,7 @@ tr:hover{background:#f9fafb}
 <div class="section">
   <h2>4. Інвестиції у зростання партнерства</h2>
   <div class="grid-2">
-    <div class="card"><h3>Знижки по кампаніях, ₴</h3><div class="chart-box"><canvas id="w-cInvest"></canvas></div></div>
+    <div class="card"><h3>Знижки клієнтам, ₴</h3><div class="chart-box"><canvas id="w-cInvest"></canvas></div></div>
     <div class="card"><h3>Кампанійні замовлення / Знижка %</h3><div class="chart-box"><canvas id="w-cCampOrders"></canvas></div></div>
   </div>
 </div>
@@ -544,8 +544,8 @@ function renderCharts(prefix, data, labelFn) {
   const rateByPeriod = {};
   for (const d of data) rateByPeriod[d.period] = d.fin_eur_uah_rate || 51;
   new Chart(document.getElementById(prefix+'-cInvest'), {type:'bar', data:{labels:campLabels, datasets:[
-    {label:'Знижка на товари (₴)', data:campData.map(d=>d.item_discount_uah), backgroundColor:'rgba(52,209,134,0.6)', borderRadius:4},
-    {label:'Знижка на доставку (₴)', data:campData.map(d=>d.delivery_discount_uah), backgroundColor:'rgba(37,99,235,0.5)', borderRadius:4}
+    {label:'Знижка на доставку (₴)', data:campData.map(d=>d.delivery_discount_uah), backgroundColor:'rgba(52,209,134,0.6)', borderRadius:4},
+    {label:'Товарна знижка / націнка (₴)', data:campData.map(d=>d.item_discount_uah), backgroundColor:'rgba(148,163,184,0.55)', borderRadius:4}
   ]}, options:{...defOpts, scales:{...defOpts.scales, x:{...defOpts.scales.x, stacked:true}, y:{...defOpts.scales.y, stacked:true}}}});
 
   const merchPriceByPeriod = {};
@@ -729,10 +729,9 @@ renderCharts('m', mData, shortMonth);
   const rateByPeriodCamp = {};
   for (const d of mData) rateByPeriodCamp[d.period] = d.fin_eur_uah_rate || 51;
   const rows = [
-    {name:'Загальна знижка клієнтам (₴)', desc:'товари + доставка', fn:d=>uah(d.campaigns_discount_uah)},
-    {name:'— Знижка на товари (₴)', desc:'', fn:d=>uah(d.item_discount_uah)},
-    {name:'— Знижка на доставку (₴)', desc:'', fn:d=>uah(d.delivery_discount_uah)},
-    {name:'Частка партнера у знижках (₴)', desc:'скільки платить заклад', fn:d=>uah(d.merchant_spend_eur * (rateByPeriodCamp[d.period] || 51))},
+    {name:'Загальна знижка клієнтам (₴)', desc:'скільки зекономили клієнти', fn:d=>uah(d.campaigns_discount_uah)},
+    {name:'— Знижка на доставку (₴)', desc:'платформа Bolt', fn:d=>uah(d.delivery_discount_uah)},
+    {name:'— Товарна знижка / націнка (₴)', desc:'потребує звірки з фінансами', fn:d=>uah(d.item_discount_uah)},
     {name:'Кампанійні замовлення', desc:'', fn:d=>fmt(d.campaign_orders)},
     {name:'Кампанійні % від розміщених', desc:'', fn:d=>{
       const placed = ordersPlacedByPeriod[d.period];
