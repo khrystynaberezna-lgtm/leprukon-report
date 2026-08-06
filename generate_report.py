@@ -321,15 +321,12 @@ ORDER BY 1, cnt DESC
 CAMPAIGNS_MONTHLY = f"""
 SELECT
     DATE_FORMAT(f.order_created_date, 'yyyy-MM') AS period,
-    SUM(f.demand_incentives_local) AS campaigns_discount_uah,
     SUM(
-        COALESCE(f.bolt_spend_am_spend_campaign, 0)
-        + COALESCE(f.bolt_spend_liquidity_campaign, 0)
-        + COALESCE(f.bolt_spend_marketing_campaign, 0)
-        + COALESCE(f.bolt_spend_user_lifecycle_campaign, 0)
-        + COALESCE(f.bolt_spend_merchant_lifecycle_campaign, 0)
-        + COALESCE(f.bolt_spend_other_campaign, 0)
-    ) AS bolt_spend_eur,
+        COALESCE(f.total_order_item_discount, 0)
+        + COALESCE(f.delivery_price_before_discount - f.delivery_price_after_discount, 0)
+    ) AS campaigns_discount_uah,
+    SUM(f.total_order_item_discount) AS item_discount_uah,
+    SUM(f.delivery_price_before_discount - f.delivery_price_after_discount) AS delivery_discount_uah,
     SUM(
         COALESCE(f.provider_spend_am_spend_campaign, 0)
         + COALESCE(f.provider_spend_liquidity_campaign, 0)
