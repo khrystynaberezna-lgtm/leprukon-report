@@ -185,21 +185,6 @@ tr:hover{background:#f9fafb}
 
 <div class="divider"></div>
 
-<!-- 4. INVESTMENT -->
-<div class="section" id="m-invest">
-  <h2>4. Інвестиції у зростання партнерства</h2>
-  <div class="grid-2">
-    <div class="card"><h3>Знижки клієнтам, ₴</h3><div class="chart-box"><canvas id="m-cInvest"></canvas></div></div>
-    <div class="card"><h3>Кампанійні замовлення / Знижка % від продажів</h3><div class="chart-box"><canvas id="m-cCampOrders"></canvas></div></div>
-  </div>
-  <div class="card" style="margin-top:14px">
-    <h3>Аналіз ефективності кампаній</h3>
-    <div style="overflow-x:auto"><table id="m-camp-table"></table></div>
-  </div>
-</div>
-
-<div class="divider"></div>
-
 <!-- 5. MERCHANT NETWORK -->
 <div class="section" id="m-merchants">
   <h2>5. Мережа закладів</h2>
@@ -285,16 +270,6 @@ tr:hover{background:#f9fafb}
   </div>
 </div>
 
-<div class="divider"></div>
-
-<!-- 4. INVESTMENT -->
-<div class="section">
-  <h2>4. Інвестиції у зростання партнерства</h2>
-  <div class="grid-2">
-    <div class="card"><h3>Знижки клієнтам, ₴</h3><div class="chart-box"><canvas id="w-cInvest"></canvas></div></div>
-    <div class="card"><h3>Кампанійні замовлення / Знижка %</h3><div class="chart-box"><canvas id="w-cCampOrders"></canvas></div></div>
-  </div>
-</div>
 
 </div><!-- end weekly tab -->
 
@@ -606,25 +581,6 @@ function renderCharts(prefix, data, labelFn) {
   // Failed Rate trend
   new Chart(document.getElementById(prefix+'-cFailRate'), {type:'line', data:{labels, datasets:[{label:'Частка невдалих %', data:data.map(d=>d.fail_failed_rate_pct), borderColor:'#dc2626', backgroundColor:'rgba(220,38,38,0.05)', fill:true, tension:.3, pointRadius:5}]}, options:defOpts});
 
-  // Campaigns
-  const campData = prefix === 'm' ? D.monthly.campaigns : D.weekly.campaigns;
-  const campLabels = campData.map(d => labelFn(d.period));
-  const rateByPeriod = {};
-  for (const d of data) rateByPeriod[d.period] = d.fin_eur_uah_rate || 51;
-  new Chart(document.getElementById(prefix+'-cInvest'), {type:'bar', data:{labels:campLabels, datasets:[
-    {label:'Знижка на доставку (₴)', data:campData.map(d=>d.delivery_discount_uah), backgroundColor:'rgba(52,209,134,0.6)', borderRadius:4},
-    {label:'Товарна знижка / націнка (₴)', data:campData.map(d=>d.item_discount_uah), backgroundColor:'rgba(148,163,184,0.55)', borderRadius:4}
-  ]}, options:{...defOpts, scales:{...defOpts.scales, x:{...defOpts.scales.x, stacked:true}, y:{...defOpts.scales.y, stacked:true}}}});
-
-  const merchPriceByPeriod = {};
-  for (const d of data) merchPriceByPeriod[d.period] = d.fin_merchant_price_uah;
-  new Chart(document.getElementById(prefix+'-cCampOrders'), {type:'bar', data:{labels:campLabels, datasets:[
-    {label:'Кампанійні замовлення', data:campData.map(d=>d.campaign_orders), backgroundColor:'rgba(234,179,8,0.4)', borderRadius:3, yAxisID:'y'},
-    {label:'Знижка % від продажів', data:campData.map(d=> {
-      const mp = merchPriceByPeriod[d.period];
-      return mp ? (d.campaigns_discount_uah / mp * 100) : 0;
-    }), borderColor:'#dc2626', type:'line', tension:.3, yAxisID:'y1', fill:false}
-  ]}, options:dualY('Кампанійні замовлення','Знижка % від продажів')});
 }
 
 // ─── Monthly data rendering ───
@@ -778,43 +734,6 @@ renderCharts('m', mData, shortMonth);
     html += `<td>${fmt(v)}</td>`;
   }
   html += `<td><strong>${fmt(grandTotal)}</strong></td></tr>`;
-  html += '</tbody>';
-  tbl.innerHTML = html;
-}
-
-// Monthly campaigns table
-{
-  const tbl = document.getElementById('m-camp-table');
-  const campData = D.monthly.campaigns;
-  let html = '<thead><tr><th>Показник</th>';
-  for (const d of campData) html += `<th>${shortMonth(d.period)}</th>`;
-  html += '</tr></thead><tbody>';
-  const merchPriceByPeriod = {};
-  for (const d of mData) merchPriceByPeriod[d.period] = d.fin_merchant_price_uah;
-  const ordersPlacedByPeriod = {};
-  for (const d of mData) ordersPlacedByPeriod[d.period] = d.fail_total_placed;
-
-  const rateByPeriodCamp = {};
-  for (const d of mData) rateByPeriodCamp[d.period] = d.fin_eur_uah_rate || 51;
-  const rows = [
-    {name:'Загальна знижка клієнтам (₴)', desc:'скільки зекономили клієнти', fn:d=>uah(d.campaigns_discount_uah)},
-    {name:'— Знижка на доставку (₴)', desc:'платформа Bolt', fn:d=>uah(d.delivery_discount_uah)},
-    {name:'— Товарна знижка / націнка (₴)', desc:'потребує звірки з фінансами', fn:d=>uah(d.item_discount_uah)},
-    {name:'Кампанійні замовлення', desc:'', fn:d=>fmt(d.campaign_orders)},
-    {name:'Кампанійні % від розміщених', desc:'', fn:d=>{
-      const placed = ordersPlacedByPeriod[d.period];
-      return placed ? pct(d.campaign_orders / placed * 100) : '—';
-    }},
-    {name:'Знижка як % від продажів', desc:'', fn:d=>{
-      const mp = merchPriceByPeriod[d.period];
-      return mp ? pct(d.campaigns_discount_uah / mp * 100) : '—';
-    }},
-  ];
-  for (const r of rows) {
-    html += `<tr><td>${r.name}${r.desc ? '<span class="me">'+r.desc+'</span>' : ''}</td>`;
-    for (const d of campData) html += `<td>${r.fn(d)}</td>`;
-    html += '</tr>';
-  }
   html += '</tbody>';
   tbl.innerHTML = html;
 }
