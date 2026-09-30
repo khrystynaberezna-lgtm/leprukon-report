@@ -7,9 +7,9 @@
   - Фінансові + операційні KPI, refunds, campaigns, acceptance/availability, top stores
 
 Параметри звіту (нижче в коді):
-  PARTNER_NAME    = "LEPRUKON"     # точне значення dim_provider_v2.group_name (UPPERCASE як у БД)
-  PARTNER_DISPLAY = "ЛЕПРЕКОН"     # людська назва для логів, заголовка і JSON
-  DATA_START      = "2025-01-01"   # стартова дата monthly даних (YYYY-MM-DD)
+  PARTNER_NAME    = "LEPRUKON"   # точне значення dim_provider_v2.group_name
+  PARTNER_DISPLAY = "ЛЕПРЕКОН"   # людська назва для логів, заголовка і JSON
+  DATA_START      = "2025-01-01"         # стартова дата monthly даних (YYYY-MM-DD)
 """
 
 import json
@@ -68,6 +68,18 @@ DATABRICKS_WAREHOUSE_ID = os.environ.get("DATABRICKS_WAREHOUSE_ID", "")
 PARTNER_NAME = "LEPRUKON"
 PARTNER_DISPLAY = "ЛЕПРЕКОН"
 DATA_START = "2025-01-01"
+
+# Локації, що належать партнеру, але ще не мають group_name='LEPRUKON'
+# у dim_provider_v2 (правка group_name ще не доїхала до таблиці).
+# Можна прибрати після того, як dim_provider_v2 оновиться.
+EXTRA_PROVIDER_IDS = []
+
+_extra_ids = ", ".join(str(i) for i in EXTRA_PROVIDER_IDS)
+GROUP_FILTER = (
+    f"(p.group_name = '{PARTNER_NAME}'"
+    + (f" OR p.provider_id IN ({_extra_ids})" if EXTRA_PROVIDER_IDS else "")
+    + ")"
+)
 
 TEMPLATE_PATH = _ROOT / "template.html"
 OUTPUT_PATH = _ROOT / "index.html"
@@ -141,6 +153,8 @@ def _week_boundaries():
 
 DATA_END = _data_end()
 WEEKLY_START, WEEKLY_END = _week_boundaries()
+LAST_MONTH_START = DATA_END[:8] + "01"
+LAST_MONTH_END = DATA_END
 
 
 # ---------------------------------------------------------------------------
@@ -318,6 +332,122 @@ GROUP BY 1, r.reason, r.actor_type
 ORDER BY 1, cnt DESC
 """
 
+FAILED_STATES_LAST_MONTH = f"""
+SELECT
+    f.order_state,
+    COUNT(*) AS cnt
+FROM main.ng_delivery.fact_order_delivery f
+    JOIN main.ng_delivery.dim_provider_v2 p ON f.provider_id = p.provider_id
+WHERE p.country_code = 'ua'
+  AND {GROUP_FILTER}
+  AND f.order_created_date >= '{LAST_MONTH_START}'
+  AND f.order_created_date <= '{LAST_MONTH_END}'
+GROUP BY 1
+ORDER BY cnt DESC
+LIMIT 20
+"""
+
+FAILED_BY_STORE_LAST_MONTH = f"""
+SELECT
+    f.provider_id,
+    COALESCE(f.provider_name, p.provider_name) AS store,
+    COALESCE(f.city_name, p.city_name) AS city,
+    COUNT(*) AS placed,
+    SUM(CASE WHEN f.order_state = 'delivered' THEN 1 ELSE 0 END) AS delivered,
+    SUM(CASE WHEN f.order_state != 'delivered' THEN 1 ELSE 0 END) AS failed,
+    SUM(CASE WHEN f.order_state = 'rejected' THEN 1 ELSE 0 END) AS rejected,
+    ROUND(SUM(CASE WHEN f.order_state != 'delivered' THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) * 100, 1) AS fail_pct
+FROM main.ng_delivery.fact_order_delivery f
+    JOIN main.ng_delivery.dim_provider_v2 p ON f.provider_id = p.provider_id
+WHERE p.country_code = 'ua'
+  AND {GROUP_FILTER}
+  AND f.order_created_date >= '{LAST_MONTH_START}'
+  AND f.order_created_date <= '{LAST_MONTH_END}'
+GROUP BY 1, 2, 3
+ORDER BY failed DESC, fail_pct DESC
+LIMIT 500
+"""
+
+FAILED_STORE_REASONS_LAST_MONTH = f"""
+SELECT
+    COALESCE(f.provider_name, p.provider_name) AS store,
+    COALESCE(f.city_name, p.city_name) AS city,
+    r.reason,
+    COUNT(*) AS cnt
+FROM main.ng_delivery.delivery_order_order_resolution r
+    JOIN main.ng_delivery.fact_order_delivery f ON r.order_id = f.order_id
+    JOIN main.ng_delivery.dim_provider_v2 p ON f.provider_id = p.provider_id
+WHERE p.country_code = 'ua'
+  AND {GROUP_FILTER}
+  AND f.order_created_date >= '{LAST_MONTH_START}'
+  AND f.order_created_date <= '{LAST_MONTH_END}'
+  AND f.order_state != 'delivered'
+GROUP BY 1, 2, 3
+ORDER BY cnt DESC
+LIMIT 500
+"""
+
+FAILED_BY_CITY_LAST_MONTH = f"""
+SELECT
+    COALESCE(f.city_name, p.city_name) AS city,
+    COUNT(*) AS placed,
+    SUM(CASE WHEN f.order_state = 'delivered' THEN 1 ELSE 0 END) AS delivered,
+    SUM(CASE WHEN f.order_state != 'delivered' THEN 1 ELSE 0 END) AS failed,
+    ROUND(SUM(CASE WHEN f.order_state != 'delivered' THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) * 100, 1) AS fail_pct
+FROM main.ng_delivery.fact_order_delivery f
+    JOIN main.ng_delivery.dim_provider_v2 p ON f.provider_id = p.provider_id
+WHERE p.country_code = 'ua'
+  AND {GROUP_FILTER}
+  AND f.order_created_date >= '{LAST_MONTH_START}'
+  AND f.order_created_date <= '{LAST_MONTH_END}'
+GROUP BY 1
+ORDER BY failed DESC
+LIMIT 50
+"""
+
+FAILED_BY_HOUR_LAST_MONTH = f"""
+SELECT
+    HOUR(f.order_created_at_local) AS hour_local,
+    COUNT(*) AS placed,
+    SUM(CASE WHEN f.order_state != 'delivered' THEN 1 ELSE 0 END) AS failed,
+    ROUND(SUM(CASE WHEN f.order_state != 'delivered' THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) * 100, 1) AS fail_pct
+FROM main.ng_delivery.fact_order_delivery f
+    JOIN main.ng_delivery.dim_provider_v2 p ON f.provider_id = p.provider_id
+WHERE p.country_code = 'ua'
+  AND {GROUP_FILTER}
+  AND f.order_created_date >= '{LAST_MONTH_START}'
+  AND f.order_created_date <= '{LAST_MONTH_END}'
+GROUP BY 1
+ORDER BY 1
+LIMIT 24
+"""
+
+FAILED_CS_COMMENTS_LAST_MONTH = f"""
+SELECT
+    CASE
+        WHEN LOWER(COALESCE(r.comment, '')) LIKE '%out of stock%' THEN 'Заклад просить скасувати: немає товару'
+        WHEN LOWER(COALESCE(r.comment, '')) LIKE '%integration%' THEN 'Проблема інтеграції / замовлення не збирається'
+        WHEN LOWER(COALESCE(r.comment, '')) LIKE '%did not answer%'
+          OR LOWER(COALESCE(r.comment, '')) LIKE '%not answer%' THEN 'Курʼєр: заклад не відповідає'
+        WHEN LOWER(COALESCE(r.comment, '')) LIKE '%no reason%' THEN 'Заклад просить скасувати без причини'
+        WHEN LOWER(COALESCE(r.comment, '')) LIKE '%manually failed by user%' THEN 'Клієнт скасував у застосунку'
+        WHEN r.comment IS NULL OR TRIM(r.comment) = '' THEN 'Без коментаря (планшет / автопричина)'
+        ELSE 'Інший коментар CS'
+    END AS comment_group,
+    COUNT(*) AS cnt
+FROM main.ng_delivery.delivery_order_order_resolution r
+    JOIN main.ng_delivery.fact_order_delivery f ON r.order_id = f.order_id
+    JOIN main.ng_delivery.dim_provider_v2 p ON f.provider_id = p.provider_id
+WHERE p.country_code = 'ua'
+  AND {GROUP_FILTER}
+  AND f.order_created_date >= '{LAST_MONTH_START}'
+  AND f.order_created_date <= '{LAST_MONTH_END}'
+  AND f.order_state != 'delivered'
+GROUP BY 1
+ORDER BY cnt DESC
+LIMIT 20
+"""
+
 CAMPAIGNS_MONTHLY = f"""
 SELECT
     DATE_FORMAT(f.order_created_date, 'yyyy-MM') AS period,
@@ -408,6 +538,28 @@ GROUP BY 1
 ORDER BY 1
 """
 
+STORE_ACTIVITY_WEEKLY = f"""
+SELECT
+    DATE_FORMAT(f.metric_timestamp_local, 'yyyy-MM-dd') AS week,
+    p.provider_id,
+    p.provider_name,
+    p.city_name,
+    ROUND(SUM(f.provider_acceptance_rate_value * f.provider_acceptance_rate_weight)
+        / NULLIF(SUM(f.provider_acceptance_rate_weight), 0) * 100, 1) AS acceptance_rate,
+    ROUND(SUM(f.provider_active_rate_value * f.provider_active_rate_weight)
+        / NULLIF(SUM(f.provider_active_rate_weight), 0) * 100, 1) AS availability_rate
+FROM main.ng_delivery.fact_provider_weekly f
+    JOIN main.ng_delivery.dim_provider_v2 p ON f.provider_id = p.provider_id
+WHERE p.country_code = 'ua'
+  AND {GROUP_FILTER}
+  AND lower(p.provider_name) <> 'deleted'
+  AND f.metric_timestamp_local >= '{WEEKLY_START}'
+  AND f.metric_timestamp_local <= '{WEEKLY_END}'
+GROUP BY 1, 2, 3, 4
+ORDER BY 3, 1
+LIMIT 5000
+"""
+
 TOP_STORES_LAST_MONTH = f"""
 SELECT
     f.provider_name,
@@ -466,28 +618,6 @@ GROUP BY 1
 ORDER BY 1
 """
 
-STORE_ACTIVITY_WEEKLY = f"""
-SELECT
-    DATE_FORMAT(f.metric_timestamp_local, 'yyyy-MM-dd') AS week,
-    p.provider_id,
-    p.provider_name,
-    p.city_name,
-    ROUND(SUM(f.provider_acceptance_rate_value * f.provider_acceptance_rate_weight)
-        / NULLIF(SUM(f.provider_acceptance_rate_weight), 0) * 100, 1) AS acceptance_rate,
-    ROUND(SUM(f.provider_active_rate_value * f.provider_active_rate_weight)
-        / NULLIF(SUM(f.provider_active_rate_weight), 0) * 100, 1) AS availability_rate
-FROM main.ng_delivery.fact_provider_weekly f
-    JOIN main.ng_delivery.dim_provider_v2 p ON f.provider_id = p.provider_id
-WHERE p.country_code = 'ua'
-  AND p.group_name = '{PARTNER_NAME}'
-  AND lower(p.provider_name) <> 'deleted'
-  AND f.metric_timestamp_local >= '{WEEKLY_START}'
-  AND f.metric_timestamp_local <= '{WEEKLY_END}'
-GROUP BY 1, 2, 3, 4
-ORDER BY 3, 1
-LIMIT 5000
-"""
-
 
 def main():
     print(f"Partner: {PARTNER_DISPLAY} ({PARTNER_NAME})")
@@ -517,6 +647,14 @@ def main():
     fail_reasons_m = to_serializable(run_query(cursor, FAILED_REASONS_MONTHLY))
     fail_reasons_w = to_serializable(run_query(cursor, FAILED_REASONS_WEEKLY))
 
+    print("Fetching failed-order diagnosis (last month)...")
+    fail_states = to_serializable(run_query(cursor, FAILED_STATES_LAST_MONTH))
+    fail_by_store = to_serializable(run_query(cursor, FAILED_BY_STORE_LAST_MONTH))
+    fail_store_reasons = to_serializable(run_query(cursor, FAILED_STORE_REASONS_LAST_MONTH))
+    fail_by_city = to_serializable(run_query(cursor, FAILED_BY_CITY_LAST_MONTH))
+    fail_by_hour = to_serializable(run_query(cursor, FAILED_BY_HOUR_LAST_MONTH))
+    fail_cs_comments = to_serializable(run_query(cursor, FAILED_CS_COMMENTS_LAST_MONTH))
+
     print("Fetching campaign data...")
     camp_m = to_serializable(run_query(cursor, CAMPAIGNS_MONTHLY))
     camp_w = to_serializable(run_query(cursor, CAMPAIGNS_WEEKLY))
@@ -526,15 +664,15 @@ def main():
     aa_m = to_serializable(run_query(cursor, ACCEPTANCE_AVAILABILITY_MONTHLY))
     aa_w = to_serializable(run_query(cursor, ACCEPTANCE_AVAILABILITY_WEEKLY))
 
+    print("Fetching per-store weekly activity...")
+    store_activity = to_serializable(run_query(cursor, STORE_ACTIVITY_WEEKLY))
+
     print("Fetching top stores...")
     top_stores = to_serializable(run_query(cursor, TOP_STORES_LAST_MONTH))
 
     print("Fetching network activation...")
     net_summary = to_serializable(run_query(cursor, NETWORK_SUMMARY))
     net_activation = to_serializable(run_query(cursor, NETWORK_ACTIVATION_MONTHLY))
-
-    print("Fetching per-store weekly activity...")
-    store_activity = to_serializable(run_query(cursor, STORE_ACTIVITY_WEEKLY))
 
     cursor.close()
     conn.close()
@@ -566,12 +704,23 @@ def main():
             "acceptance_availability": aa_w,
         },
         "acceptance_current": aa_current,
+        "store_activity": store_activity,
         "top_stores": top_stores,
+        "failed_diagnosis": {
+            "period": LAST_MONTH_START[:7],
+            "period_start": LAST_MONTH_START,
+            "period_end": LAST_MONTH_END,
+            "by_state": fail_states,
+            "by_store": fail_by_store,
+            "store_reasons": fail_store_reasons,
+            "by_city": fail_by_city,
+            "by_hour": fail_by_hour,
+            "cs_comments": fail_cs_comments,
+        },
         "network": {
             "summary": net_summary[0] if net_summary else {},
             "activation": net_activation,
         },
-        "store_activity": store_activity,
     }
 
     DATA_PATH.write_text(

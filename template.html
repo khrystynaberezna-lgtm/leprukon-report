@@ -93,6 +93,7 @@ tr:hover{background:#f9fafb}
 <div class="tab-nav">
   <button class="tab-btn active" data-tab="monthly">Місячні дані</button>
   <button class="tab-btn" data-tab="weekly">Тижневі дані</button>
+  <button class="tab-btn" data-tab="failed">Невдалі замовлення</button>
   <button class="tab-btn" data-tab="activity">Активність локацій</button>
 </div>
 
@@ -165,21 +166,6 @@ tr:hover{background:#f9fafb}
   <div class="card" style="margin-top:14px">
     <h3>Зведена таблиця операційних показників</h3>
     <div style="overflow-x:auto"><table id="m-ops-table"></table></div>
-  </div>
-</div>
-
-<div class="divider"></div>
-
-<!-- 3. FAILED ORDERS ANALYSIS -->
-<div class="section" id="m-failed">
-  <h2>3. Аналіз невдалих замовлень</h2>
-  <div class="grid-2">
-    <div class="card"><h3>Невдалі замовлення за причинами</h3><div class="chart-box-lg"><canvas id="m-cFailReasons"></canvas></div></div>
-    <div class="card"><h3>Динаміка частки невдалих, %</h3><div class="chart-box-lg"><canvas id="m-cFailRate"></canvas></div></div>
-  </div>
-  <div class="card" style="margin-top:14px">
-    <h3>Деталізація невдалих замовлень за причинами</h3>
-    <div style="overflow-x:auto"><table id="m-fail-table"></table></div>
   </div>
 </div>
 
@@ -259,19 +245,55 @@ tr:hover{background:#f9fafb}
   </div>
 </div>
 
-<div class="divider"></div>
 
-<!-- 3. FAILED ORDERS -->
-<div class="section">
-  <h2>3. Аналіз невдалих замовлень</h2>
+</div><!-- end weekly tab -->
+
+
+<!-- ═══════════════════════════════════════ -->
+<!-- FAILED ORDERS TAB -->
+<!-- ═══════════════════════════════════════ -->
+<div class="tab-content" id="tab-failed">
+
+<div class="section" id="m-failed">
+  <h2>Аналіз невдалих замовлень — причини і що виправити</h2>
+  <div id="m-fail-diagnosis"></div>
+  <div class="grid-4" id="m-fail-reason-kpis" style="margin:14px 0"></div>
   <div class="grid-2">
-    <div class="card"><h3>Невдалі замовлення за причинами</h3><div class="chart-box-lg"><canvas id="w-cFailReasons"></canvas></div></div>
-    <div class="card"><h3>Динаміка частки невдалих, %</h3><div class="chart-box-lg"><canvas id="w-cFailRate"></canvas></div></div>
+    <div class="card"><h3>Невдалі замовлення за причинами (місяці)</h3><div class="chart-box-lg"><canvas id="m-cFailReasons"></canvas></div></div>
+    <div class="card"><h3>Динаміка частки невдалих, % (місяці)</h3><div class="chart-box-lg"><canvas id="m-cFailRate"></canvas></div></div>
+  </div>
+  <div class="grid-2" style="margin-top:14px">
+    <div class="card"><h3>Невдалі за годиною доби (останній місяць)</h3><div class="chart-box"><canvas id="m-cFailHour"></canvas></div></div>
+    <div class="card">
+      <h3>Міста (останній місяць)</h3>
+      <div style="overflow-x:auto"><table id="m-fail-city-table"></table></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <h3>Деталізація невдалих замовлень за причинами</h3>
+    <div style="overflow-x:auto"><table id="m-fail-table"></table></div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <h3>Локації з найбільшою кількістю невдалих (останній місяць)</h3>
+    <div style="overflow-x:auto"><table id="m-fail-store-table"></table></div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <h3>Що треба виправити (план дій)</h3>
+    <div id="m-fail-actions"></div>
   </div>
 </div>
 
+<div class="divider"></div>
 
-</div><!-- end weekly tab -->
+<div class="section">
+  <h2>Тижнева динаміка</h2>
+  <div class="grid-2">
+    <div class="card"><h3>Невдалі замовлення за причинами (тижні)</h3><div class="chart-box-lg"><canvas id="w-cFailReasons"></canvas></div></div>
+    <div class="card"><h3>Динаміка частки невдалих, % (тижні)</h3><div class="chart-box-lg"><canvas id="w-cFailRate"></canvas></div></div>
+  </div>
+</div>
+
+</div><!-- end failed tab -->
 
 
 <!-- ═══════════════════════════════════════ -->
@@ -425,6 +447,8 @@ function reasonLabel(reason, actor) {
     'closed|provider': 'Заклад зачинений',
     'do_not_wish_to_serve_this_client|provider': 'Заклад відмовив клієнту',
     'items_out_of_stock|provider': 'Немає товару в наявності',
+    'device_issue|provider': 'Проблема з пристроєм / планшетом',
+    'too_many_orders|provider': 'Забагато замовлень',
     'other|provider': 'Інше (заклад)',
   };
   const reasonsUA = {
@@ -438,6 +462,8 @@ function reasonLabel(reason, actor) {
     'items_out_of_stock': 'Немає товару в наявності',
     'out_of_stock': 'Немає товару в наявності',
     'too_busy': 'Заклад перевантажений',
+    'device_issue': 'Проблема з пристроєм / планшетом',
+    'too_many_orders': 'Забагато замовлень',
     'other': 'Інше',
   };
   const actorsUA = {provider: 'заклад', bolt: 'Bolt', courier: 'кур\'єр', client: 'клієнт', system: 'система'};
@@ -461,6 +487,8 @@ const REASON_COLORS = {
   'closed|provider': '#16a34a',
   'do_not_wish_to_serve_this_client|provider': '#db2777',
   'items_out_of_stock|provider': '#0d9488',
+  'device_issue|provider': '#4f46e5',
+  'too_many_orders|provider': '#be123c',
   'other|provider': '#a16207',
 };
 
@@ -471,6 +499,12 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    requestAnimationFrame(() => {
+      document.querySelectorAll('#tab-' + btn.dataset.tab + ' canvas').forEach(c => {
+        const ch = Chart.getChart(c);
+        if (ch) ch.resize();
+      });
+    });
   });
 });
 
@@ -737,6 +771,167 @@ renderCharts('m', mData, shortMonth);
   html += '</tbody>';
   tbl.innerHTML = html;
 }
+
+(function renderFailDiagnosis(){
+  const diag = D.failed_diagnosis || {};
+  const last = mData[mData.length-1] || {};
+  const prev = mData.length > 1 ? mData[mData.length-2] : null;
+  const period = diag.period || last.period || '';
+  const placed = Number(last.fail_total_placed) || 0;
+  const failed = Number(last.fail_failed_total) || 0;
+  const delivered = Number(last.fail_delivered) || Number(last.fin_orders) || 0;
+  const failPct = Number(last.fail_failed_rate_pct) || 0;
+  const reasonsMap = buildFailReasonsMap(D.monthly.failed_reasons || []);
+  const lastReasons = reasonsMap[last.period] || {};
+  const reasonRows = Object.entries(lastReasons).map(([k,v]) => {
+    const [reason, actor] = k.split('|');
+    return {key:k, reason, actor, cnt:Number(v)||0};
+  }).sort((a,b)=>b.cnt-a.cnt);
+  const reasonTotal = reasonRows.reduce((s,r)=>s+r.cnt,0) || failed || 1;
+  const share = (cnt) => reasonTotal ? (cnt / reasonTotal * 100) : 0;
+  const noReply = reasonRows.filter(r=>r.reason==='did_not_respond').reduce((s,r)=>s+r.cnt,0);
+  const oos = reasonRows.filter(r=>r.reason==='items_out_of_stock' || r.reason==='out_of_stock').reduce((s,r)=>s+r.cnt,0);
+  const csProv = reasonRows.filter(r=>r.reason==='manually_failed_by_cs' && r.actor==='provider').reduce((s,r)=>s+r.cnt,0);
+  const userCancel = reasonRows.filter(r=>r.reason==='manually_failed_by_user').reduce((s,r)=>s+r.cnt,0);
+  const closed = reasonRows.filter(r=>r.reason==='closed').reduce((s,r)=>s+r.cnt,0);
+  const merchantShare = failPct > 0 ? Math.min(100, ((failed - userCancel) / Math.max(failed,1)) * 100) : 0;
+
+  const states = diag.by_state || [];
+  const rejected = Number((states.find(s=>s.order_state==='rejected')||{}).cnt) || 0;
+  const failedState = Number((states.find(s=>s.order_state==='failed')||{}).cnt) || 0;
+
+  const hours = (diag.by_hour || []).map(h => ({
+    hour: Number(h.hour_local),
+    placed: Number(h.placed)||0,
+    failed: Number(h.failed)||0,
+    fail_pct: Number(h.fail_pct)||0
+  }));
+  const lateHours = hours.filter(h => h.hour >= 21 || h.hour <= 7);
+  const latePlaced = lateHours.reduce((s,h)=>s+h.placed,0);
+  const lateFailed = lateHours.reduce((s,h)=>s+h.failed,0);
+
+  const cities = diag.by_city || [];
+  const worstCity = cities.slice().sort((a,b)=>Number(b.fail_pct)-Number(a.fail_pct))[0];
+  const stores = diag.by_store || [];
+  const criticalStores = stores.filter(s => Number(s.fail_pct) >= 80 && Number(s.placed) >= 3);
+  const storeReasons = diag.store_reasons || [];
+  const reasonByStore = {};
+  for (const r of storeReasons) {
+    const k = (r.store||'') + '|' + (r.city||'');
+    if (!reasonByStore[k]) reasonByStore[k] = [];
+    reasonByStore[k].push(r);
+  }
+  const topReason = (store, city) => {
+    const rows = (reasonByStore[store+'|'+city] || []).slice().sort((a,b)=>Number(b.cnt)-Number(a.cnt));
+    if (!rows.length) return '—';
+    return reasonLabel(rows[0].reason, 'provider') + ' (' + fmt(rows[0].cnt) + ')';
+  };
+
+  const box = document.getElementById('m-fail-diagnosis');
+  if (box) {
+    const delta = prev ? (failPct - Number(prev.fail_failed_rate_pct||0)) : 0;
+    const deltaTxt = prev ? (delta >= 0 ? `+${n(delta,1)} п.п.` : `${n(delta,1)} п.п.`) + ` vs ${shortMonth(prev.period)}` : '';
+    box.innerHTML = `
+      <div class="insight warn">
+        <div class="insight-title">Головний висновок: ${pct(failPct)} невдалих у ${shortMonth(period)} — переважно з боку закладів, не клієнтів</div>
+        <div class="insight-text">
+          З <b>${fmt(placed)}</b> розміщених замовлень доставлено <b>${fmt(delivered)}</b>, невдалих — <b>${fmt(failed)}</b>.
+          ${rejected ? `З них відхилено закладом: ${fmt(rejected)}, скасовано після прийняття: ${fmt(failedState)}.` : ''}
+          <b>${n(share(noReply),0)}%</b> невдалих — заклад не відповів на планшеті,
+          <b>${n(share(oos),0)}%</b> — немає товару в наявності,
+          скасовано підтримкою на запит закладу — <b>${n(share(csProv),0)}%</b>,
+          скасування клієнтом — лише <b>${n(share(userCancel),0)}%</b>.
+          Близько <b>${n(merchantShare,0)}%</b> втрат повʼязані з роботою точок.
+          ${deltaTxt ? 'Зміна: ' + deltaTxt + '.' : ''}
+          Орієнтир якості на платформі — частка невдалих нижче 8%.
+        </div>
+      </div>`;
+  }
+
+  const kpisEl = document.getElementById('m-fail-reason-kpis');
+  if (kpisEl) {
+    const cards = [
+      {label:'Не відповіли', value: fmt(noReply), sub: n(share(noReply),0)+'% невдалих', color:'#7c3aed'},
+      {label:'Немає товару', value: fmt(oos), sub: n(share(oos),0)+'% невдалих', color:'#0d9488'},
+      {label:'Скасовано підтримкою', value: fmt(csProv), sub: n(share(csProv),0)+'% невдалих', color:'#dc2626'},
+      {label:'Клієнт скасував', value: fmt(userCancel), sub: n(share(userCancel),0)+'% невдалих', color:'#6b7280'},
+    ];
+    kpisEl.innerHTML = cards.map(c =>
+      `<div class="card kpi"><div class="kpi-label">${c.label}</div><div class="kpi-value" style="color:${c.color}">${c.value}</div><div class="kpi-sub">${c.sub}</div></div>`
+    ).join('');
+  }
+
+  const cityTbl = document.getElementById('m-fail-city-table');
+  if (cityTbl) {
+    let html = '<thead><tr><th>Місто</th><th>Розміщені</th><th>Доставлені</th><th>Невдалі</th><th>Failed %</th></tr></thead><tbody>';
+    for (const c of cities) {
+      const p = Number(c.fail_pct);
+      const color = p >= 70 ? 'var(--red)' : p >= 40 ? 'var(--orange)' : 'var(--green)';
+      html += `<tr><td>${c.city||'—'}</td><td>${fmt(c.placed)}</td><td>${fmt(c.delivered)}</td><td>${fmt(c.failed)}</td><td style="color:${color};font-weight:700">${pct(c.fail_pct)}</td></tr>`;
+    }
+    html += '</tbody>';
+    cityTbl.innerHTML = html;
+  }
+
+  const storeTbl = document.getElementById('m-fail-store-table');
+  if (storeTbl) {
+    let html = '<thead><tr><th>Локація</th><th>Місто</th><th>Розміщені</th><th>Доставлені</th><th>Невдалі</th><th>Failed %</th><th>Головна причина</th></tr></thead><tbody>';
+    for (const s of stores) {
+      const p = Number(s.fail_pct);
+      const color = p >= 80 ? 'var(--red)' : p >= 50 ? 'var(--orange)' : p >= 30 ? 'var(--yellow)' : 'var(--green)';
+      html += `<tr>
+        <td>${s.store||'—'}</td>
+        <td>${s.city||'—'}</td>
+        <td>${fmt(s.placed)}</td>
+        <td>${fmt(s.delivered)}</td>
+        <td>${fmt(s.failed)}</td>
+        <td style="color:${color};font-weight:700">${pct(s.fail_pct)}</td>
+        <td>${topReason(s.store, s.city)}</td>
+      </tr>`;
+    }
+    html += '</tbody>';
+    storeTbl.innerHTML = html;
+  }
+
+  const hourCanvas = document.getElementById('m-cFailHour');
+  if (hourCanvas && hours.length) {
+    const labels = hours.map(h => String(h.hour).padStart(2,'0') + ':00');
+    new Chart(hourCanvas, {data:{labels, datasets:[
+      {type:'bar', label:'Розміщені', data:hours.map(h=>h.placed), backgroundColor:'rgba(52,209,134,0.35)', borderRadius:3, yAxisID:'y'},
+      {type:'line', label:'Failed %', data:hours.map(h=>h.fail_pct), borderColor:'#dc2626', tension:.3, yAxisID:'y1', fill:false}
+    ]}, options:dualY('Замовлення','Failed %')});
+  }
+
+  const actions = document.getElementById('m-fail-actions');
+  if (actions) {
+    const names = criticalStores.map(s => `${s.store} (${s.city}, ${pct(s.fail_pct)})`).slice(0,8);
+    actions.innerHTML = `
+      <div class="insight action">
+        <div class="insight-title">1. Прийняття замовлень на планшеті</div>
+        <div class="insight-text">Більше половини невдалих виникають тому, що заклад не відповідає на нове замовлення. Рекомендуємо призначити відповідального на кожній зміні, увімкнути звукові сповіщення на планшеті та приймати або відхиляти замовлення протягом 1–1,5 хвилини. Цільовий рівень прийняття — від 90%.</div>
+      </div>
+      <div class="insight action">
+        <div class="insight-title">2. Наявність товарів у меню</div>
+        <div class="insight-text">Друга причина — позиції, яких немає в магазині (${fmt(oos)} замовлень у ${shortMonth(period)}). Частина звернень у підтримку також повʼязана з тим, що заклад просив скасувати замовлення через відсутність товару. Рекомендуємо щодня оновлювати залишки, приховувати відсутні позиції в меню та пропонувати заміну замість скасування всього замовлення.</div>
+      </div>
+      <div class="insight action">
+        <div class="insight-title">3. Години роботи в застосунку</div>
+        <div class="insight-text">${latePlaced ? `Після 21:00 і рано вранці клієнти розмістили ${fmt(latePlaced)} замовлень, з них невдалих ${fmt(lateFailed)} (${latePlaced?pct(lateFailed/latePlaced*100):'—'}). ` : ''}Заклад залишається видимим у застосунку, коли персонал уже не збирає доставку. Варто звірити графік у кабінеті з реальною зміною та зупиняти прийом за 30–45 хвилин до закриття.</div>
+      </div>
+      <div class="insight warn">
+        <div class="insight-title">4. Локації, які зараз майже не доставляють</div>
+        <div class="insight-text">${names.length ? 'На цих точках більшість замовлень не доходить до клієнта: <b>' + names.join('; ') + '</b>. ' : ''}Рекомендуємо тимчасово призупинити прийом, провести навчання персоналу і повернути точку в роботу, коли прийняття буде стабільно від 90% протягом тижня. ${worstCity ? 'Окремої уваги потребує <b>' + worstCity.city + '</b> — зараз невдалих ' + pct(worstCity.fail_pct) + '.' : ''}</div>
+      </div>
+      <div class="insight">
+        <div class="insight-title">5. Спочатку стабільна робота точок, потім ріст попиту</div>
+        <div class="insight-text">У серпні кількість розміщених замовлень зросла майже втричі порівняно з липнем, але частина мережі не встигала їх обслуговувати. Коли частка невдалих знизиться нижче 8–10%, акції та знижки конвертуватимуться в доставлені замовлення, а не в скасування.</div>
+      </div>
+      <div class="insight good">
+        <div class="insight-title">Орієнтири всередині мережі</div>
+        <div class="insight-text">Уже є точки з кращою якістю: Інститутська 14 (Хмельницький), Стрийська 59 (Львів), Коцюбинського 37 (Вінниця) — частка невдалих близько 20–30%. Їхній підхід (хто відповідає за планшет і як оновлюють наявність товарів) варто поширити на решту локацій.</div>
+      </div>`;
+  }
+})();
 
 // Monthly top stores
 {
