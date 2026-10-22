@@ -886,7 +886,7 @@ renderCharts('m', mData, shortMonth);
         <td>${fmt(s.delivered)}</td>
         <td>${fmt(s.failed)}</td>
         <td style="color:${color};font-weight:700">${pct(s.fail_pct)}</td>
-        <td>${topReason(s.store, s.city)}</td>
+        <td>${(function(){var rs=(reasonByStore[(s.store||'')+'|'+(s.city||'')]||[]).slice().sort(function(a,b){return Number(b.cnt)-Number(a.cnt)});if(!rs.length)return '—';var top=reasonLabel(rs[0].reason,'provider')+' ('+fmt(rs[0].cnt)+')';if(rs.length<2)return top;var full=rs.map(function(r){return reasonLabel(r.reason,'provider')+' ('+fmt(r.cnt)+')'}).join('&#10;');return '<span title="'+full+'" style="border-bottom:1px dotted var(--muted);cursor:help">'+top+'</span>';})()}</td>
       </tr>`;
     }
     html += '</tbody>';
