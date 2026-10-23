@@ -551,7 +551,7 @@ FROM main.ng_delivery.fact_provider_weekly f
     JOIN main.ng_delivery.dim_provider_v2 p ON f.provider_id = p.provider_id
 WHERE p.country_code = 'ua'
   AND {GROUP_FILTER}
-  AND lower(p.provider_name) <> 'deleted'
+  AND p.provider_status = 'active'
   AND f.metric_timestamp_local >= '{WEEKLY_START}'
   AND f.metric_timestamp_local <= '{WEEKLY_END}'
 GROUP BY 1, 2, 3, 4
