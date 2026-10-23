@@ -1098,7 +1098,7 @@ if (wData.length) {
   let html = '<thead><tr><th>#</th><th>Локація</th><th>Місто</th>';
   for (const w of weeks) html += `<th class="week">${shortWeek(w)}</th>`;
   html += '<th>Сер. дост.</th><th>Тренд</th></tr></thead><tbody>';
-  stores.forEach((s, i) => {
+  [...stores].sort((a,b)=>a.avgAv-b.avgAv).forEach((s, i) => {
     html += `<tr><td class="rank">${i+1}</td>`;
     html += `<td class="store" title="${s.name}">${s.name}</td>`;
     html += `<td>${s.city || '—'}</td>`;
