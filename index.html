@@ -1094,29 +1094,43 @@ if (wData.length) {
   document.getElementById('a-insights').innerHTML = ins.map(i =>
     `<div class="insight ${i.cls}"><div class="insight-title">${i.t}</div><div class="insight-text">${i.x}</div></div>`).join('');
 
-  // Ranking table
-  let html = '<thead><tr><th>#</th><th>Локація</th><th>Місто</th>';
-  for (const w of weeks) html += `<th class="week">${shortWeek(w)}</th>`;
-  html += '<th>Сер. дост.</th><th>Тренд</th></tr></thead><tbody>';
-  [...stores].sort((a,b)=>a.avgAv-b.avgAv).forEach((s, i) => {
-    html += `<tr><td class="rank">${i+1}</td>`;
-    html += `<td class="store" title="${s.name}">${s.name}</td>`;
-    html += `<td>${s.city || '—'}</td>`;
-    for (let k=0;k<weeks.length;k++) {
-      const av = s.avSeries[k], ac = s.acSeries[k];
-      html += `<td>${heat(av)}<div class="me" style="font-size:9px">Acc ${ac==null?'—':n(ac,0)+'%'}</div></td>`;
-    }
-    html += `<td><b>${n(s.avgAv,0)}%</b></td>`;
-    if (s.trend == null) html += '<td class="trend-flat">—</td>';
-    else {
-      const cls = s.trend > 2 ? 'trend-up' : s.trend < -2 ? 'trend-down' : 'trend-flat';
-      const arr = s.trend > 2 ? '▲' : s.trend < -2 ? '▼' : '≈';
-      html += `<td class="${cls}">${arr} ${s.trend>0?'+':''}${n(s.trend,0)} пп</td>`;
-    }
-    html += '</tr>';
-  });
-  html += '</tbody>';
-  document.getElementById('a-table').innerHTML = html;
+  // Ranking table (клік на «Тренд» — сортування)
+  let actSort = {by:'av', dir:'asc'};
+  function actSorted(){
+    const arr=[...stores];
+    if(actSort.by==='trend'){
+      arr.sort((a,b)=>{const an=a.trend==null,bn=b.trend==null;if(an&&bn)return 0;if(an)return 1;if(bn)return -1;return actSort.dir==='asc'?(a.trend-b.trend):(b.trend-a.trend);});
+    } else { arr.sort((a,b)=>a.avgAv-b.avgAv); }
+    return arr;
+  }
+  function renderActTable(){
+    const trArrow = actSort.by==='trend' ? (actSort.dir==='asc'?'▲':'▼') : '⇅';
+    let html = '<thead><tr><th>#</th><th>Локація</th><th>Місто</th>';
+    for (const w of weeks) html += `<th class="week">${shortWeek(w)}</th>`;
+    html += `<th>Сер. дост.</th><th id="a-th-trend" style="cursor:pointer;user-select:none" title="Клік — сортувати за трендом (найгірший / найкращий)">Тренд ${trArrow}</th></tr></thead><tbody>`;
+    actSorted().forEach((s, i) => {
+      html += `<tr><td class="rank">${i+1}</td>`;
+      html += `<td class="store" title="${s.name}">${s.name}</td>`;
+      html += `<td>${s.city || '—'}</td>`;
+      for (let k=0;k<weeks.length;k++) {
+        const av = s.avSeries[k], ac = s.acSeries[k];
+        html += `<td>${heat(av)}<div class="me" style="font-size:9px">Acc ${ac==null?'—':n(ac,0)+'%'}</div></td>`;
+      }
+      html += `<td><b>${n(s.avgAv,0)}%</b></td>`;
+      if (s.trend == null) html += '<td class="trend-flat">—</td>';
+      else {
+        const cls = s.trend > 2 ? 'trend-up' : s.trend < -2 ? 'trend-down' : 'trend-flat';
+        const arr = s.trend > 2 ? '▲' : s.trend < -2 ? '▼' : '≈';
+        html += `<td class="${cls}">${arr} ${s.trend>0?'+':''}${n(s.trend,0)} пп</td>`;
+      }
+      html += '</tr>';
+    });
+    html += '</tbody>';
+    document.getElementById('a-table').innerHTML = html;
+    const th = document.getElementById('a-th-trend');
+    if (th) th.addEventListener('click', function(){ actSort = {by:'trend', dir:(actSort.by==='trend'&&actSort.dir==='asc')?'desc':'asc'}; renderActTable(); });
+  }
+  renderActTable();
 })();
 </script>
 </body>
