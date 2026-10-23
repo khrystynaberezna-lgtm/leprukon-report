@@ -137,10 +137,9 @@ def to_serializable(rows):
 
 
 def _data_end():
-    """Останній день попереднього завершеного місяця (виключаємо поточний місяць)."""
+    """Останній день з даними — вчора (включає поточний неповний місяць)."""
     today = datetime.now().date()
-    first_of_current = today.replace(day=1)
-    return str(first_of_current - timedelta(days=1))
+    return str(today - timedelta(days=1))
 
 
 def _week_boundaries():
