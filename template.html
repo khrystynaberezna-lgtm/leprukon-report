@@ -263,9 +263,9 @@ tr:hover{background:#f9fafb}
     <div class="card"><h3>Динаміка частки невдалих, % (місяці)</h3><div class="chart-box-lg"><canvas id="m-cFailRate"></canvas></div></div>
   </div>
   <div class="grid-2" style="margin-top:14px">
-    <div class="card"><h3>Невдалі за годиною доби (останній місяць)</h3><div class="chart-box"><canvas id="m-cFailHour"></canvas></div></div>
+    <div class="card"><h3>Невдалі за годиною доби (<span class="lm">останній місяць</span>)</h3><div class="chart-box"><canvas id="m-cFailHour"></canvas></div></div>
     <div class="card">
-      <h3>Міста (останній місяць)</h3>
+      <h3>Міста (<span class="lm">останній місяць</span>)</h3>
       <div style="overflow-x:auto"><table id="m-fail-city-table"></table></div>
     </div>
   </div>
@@ -274,7 +274,7 @@ tr:hover{background:#f9fafb}
     <div style="overflow-x:auto"><table id="m-fail-table"></table></div>
   </div>
   <div class="card" style="margin-top:14px">
-    <h3>Локації з найбільшою кількістю невдалих (останній місяць)</h3>
+    <h3>Локації з найбільшою кількістю невдалих (<span class="lm">останній місяць</span>)</h3>
     <div style="overflow-x:auto"><table id="m-fail-store-table"></table></div>
   </div>
   <div class="card" style="margin-top:14px">
@@ -815,6 +815,7 @@ renderCharts('m', mData, shortMonth);
   const stores = diag.by_store || [];
   const criticalStores = stores.filter(s => Number(s.fail_pct) >= 80 && Number(s.placed) >= 3);
   const storeReasons = diag.store_reasons || [];
+  (function(){var FM={'01':'січень','02':'лютий','03':'березень','04':'квітень','05':'травень','06':'червень','07':'липень','08':'серпень','09':'вересень','10':'жовтень','11':'листопад','12':'грудень'};var pp=(diag.period||'').split('-');var lbl=FM[pp[1]]?FM[pp[1]]+' '+pp[0]:(diag.period||'останній місяць');document.querySelectorAll('.lm').forEach(function(e){e.textContent=lbl;});})();
   const reasonByStore = {};
   for (const r of storeReasons) {
     const k = (r.store||'') + '|' + (r.city||'');
@@ -875,7 +876,7 @@ renderCharts('m', mData, shortMonth);
 
   const storeTbl = document.getElementById('m-fail-store-table');
   if (storeTbl) {
-    let html = '<thead><tr><th>Локація</th><th>Місто</th><th>Розміщені</th><th>Доставлені</th><th>Невдалі</th><th>Failed %</th><th>Головна причина</th></tr></thead><tbody>';
+    let html = '<thead><tr><th>Локація</th><th>Місто</th><th>Розміщені</th><th>Доставлені</th><th>Невдалі</th><th>Failed %</th><th>Причини</th></tr></thead><tbody>';
     for (const s of stores) {
       const p = Number(s.fail_pct);
       const color = p >= 80 ? 'var(--red)' : p >= 50 ? 'var(--orange)' : p >= 30 ? 'var(--yellow)' : 'var(--green)';
@@ -886,7 +887,7 @@ renderCharts('m', mData, shortMonth);
         <td>${fmt(s.delivered)}</td>
         <td>${fmt(s.failed)}</td>
         <td style="color:${color};font-weight:700">${pct(s.fail_pct)}</td>
-        <td>${(function(){var rs=(reasonByStore[(s.store||'')+'|'+(s.city||'')]||[]).slice().sort(function(a,b){return Number(b.cnt)-Number(a.cnt)});if(!rs.length)return '—';var top=reasonLabel(rs[0].reason,'provider')+' ('+fmt(rs[0].cnt)+')';if(rs.length<2)return top;var full=rs.map(function(r){return reasonLabel(r.reason,'provider')+' ('+fmt(r.cnt)+')'}).join('&#10;');return '<span title="'+full+'" style="border-bottom:1px dotted var(--muted);cursor:help">'+top+'</span>';})()}</td>
+        <td>${(function(){var rs=(reasonByStore[(s.store||'')+'|'+(s.city||'')]||[]).slice().sort(function(a,b){return Number(b.cnt)-Number(a.cnt)});if(!rs.length)return '—';return rs.map(function(r){return reasonLabel(r.reason,'provider')+' ('+fmt(r.cnt)+')'}).join(', ');})()}</td>
       </tr>`;
     }
     html += '</tbody>';
