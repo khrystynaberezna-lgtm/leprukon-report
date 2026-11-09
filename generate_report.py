@@ -156,6 +156,40 @@ LAST_MONTH_START = DATA_END[:8] + "01"
 LAST_MONTH_END = DATA_END
 
 
+def _detail_start():
+    """Перше число місяця 3 місяці тому — для помісячної деталізації (3 завершені + поточний)."""
+    today = datetime.now().date()
+    y, m = today.year, today.month - 3
+    while m <= 0:
+        m += 12
+        y -= 1
+    return f"{y:04d}-{m:02d}-01"
+
+
+DETAIL_START = _detail_start()
+
+STORE_MONTHLY = f"""
+SELECT
+    DATE_FORMAT(f.order_created_date, 'yyyy-MM') AS period,
+    f.provider_id,
+    COALESCE(f.provider_name, p.provider_name) AS store,
+    COALESCE(f.city_name, p.city_name) AS city,
+    COUNT(*) AS placed,
+    SUM(CASE WHEN f.order_state = 'delivered' THEN 1 ELSE 0 END) AS delivered,
+    SUM(CASE WHEN f.order_state != 'delivered' THEN 1 ELSE 0 END) AS cancelled,
+    SUM(CASE WHEN f.order_state = 'delivered' THEN f.provider_price_before_discount ELSE 0 END) AS sales
+FROM main.ng_delivery.fact_order_delivery f
+    JOIN main.ng_delivery.dim_provider_v2 p ON f.provider_id = p.provider_id
+WHERE p.country_code = 'ua'
+  AND p.group_name = '{PARTNER_NAME}'
+  AND f.order_created_date >= '{DETAIL_START}'
+  AND f.order_created_date <= '{DATA_END}'
+GROUP BY 1, 2, 3, 4
+ORDER BY 1, sales DESC
+LIMIT 5000
+"""
+
+
 # ---------------------------------------------------------------------------
 # SQL Queries — Monthly
 # ---------------------------------------------------------------------------
@@ -666,6 +700,9 @@ def main():
     print("Fetching per-store weekly activity...")
     store_activity = to_serializable(run_query(cursor, STORE_ACTIVITY_WEEKLY))
 
+    print("Fetching per-store monthly detail...")
+    store_monthly = to_serializable(run_query(cursor, STORE_MONTHLY))
+
     print("Fetching top stores...")
     top_stores = to_serializable(run_query(cursor, TOP_STORES_LAST_MONTH))
 
@@ -704,6 +741,8 @@ def main():
         },
         "acceptance_current": aa_current,
         "store_activity": store_activity,
+        "store_monthly": store_monthly,
+        "detail_start": DETAIL_START,
         "top_stores": top_stores,
         "failed_diagnosis": {
             "period": LAST_MONTH_START[:7],

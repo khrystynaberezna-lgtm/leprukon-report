@@ -110,6 +110,20 @@ tr:hover{background:#f9fafb}
 
 <div class="divider"></div>
 
+<!-- MONTH DETAIL (selector) -->
+<div class="section" id="m-detail">
+  <h2 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">Деталізація за місяцем
+    <select id="m-month-pick" style="font-size:14px;font-weight:500;padding:5px 12px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--text);cursor:pointer"></select>
+  </h2>
+  <div class="grid-6" id="m-detail-kpis"></div>
+  <div class="card" style="margin-top:14px">
+    <h3>Замовлення та продажі по локаціях <span id="m-detail-loc-sub" class="me" style="font-size:11px"></span></h3>
+    <div style="overflow-x:auto"><table id="m-detail-store-table"></table></div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
 <!-- 1. GROWTH & SALES -->
 <div class="section" id="m-sales">
   <h2>1. Зростання та обсяги продажів</h2>
@@ -620,6 +634,67 @@ function renderCharts(prefix, data, labelFn) {
 // ─── Monthly data rendering ───
 renderKPICards('m-kpi-cards', mData, shortMonth);
 renderCharts('m', mData, shortMonth);
+
+// ─── Month detail (selector: 3 завершені + поточний) ───
+(function(){
+  const pick = document.getElementById('m-month-pick');
+  if (!pick) return;
+  const sm = D.store_monthly || [];
+  const allPeriods = mData.map(d => d.period);
+  const periods = allPeriods.slice(-4);
+  pick.innerHTML = periods.slice().reverse().map(p => `<option value="${p}">${shortMonth(p)}</option>`).join('');
+
+  const byPeriodStore = {};
+  for (const r of sm) {
+    if (!byPeriodStore[r.period]) byPeriodStore[r.period] = {};
+    byPeriodStore[r.period][r.provider_id] = r;
+  }
+  const mByPeriod = {};
+  for (const d of mData) mByPeriod[d.period] = d;
+  const prevOf = p => { const i = allPeriods.indexOf(p); return i > 0 ? allPeriods[i-1] : null; };
+
+  function renderDetail(P) {
+    const d = mByPeriod[P] || {};
+    const newC = Number(d.fin_users_activated) || 0;
+    const act = Number(d.fin_active_users) || 0;
+    const ret = Math.max(act - newC, 0);
+    const kpis = [
+      {label:'Продажі, ₴', value: uah(d.fin_merchant_price_uah)},
+      {label:'Доставлені замовлення', value: fmt(d.fin_orders)},
+      {label:'Скасовані', value: fmt(d.fail_failed_total), sub: pct(d.fail_failed_rate_pct)},
+      {label:'Середній чек', value: n(d.fin_merchant_price_per_order,0) + ' ₴'},
+      {label:'Нові клієнти', value: fmt(newC)},
+      {label:'Повернулись', value: fmt(ret)},
+    ];
+    document.getElementById('m-detail-kpis').innerHTML = kpis.map(k =>
+      `<div class="card kpi"><div class="kpi-label">${k.label}</div><div class="kpi-value">${k.value}</div><div class="kpi-sub stable">${k.sub||''}</div></div>`).join('');
+
+    const prevP = prevOf(P);
+    const cur = byPeriodStore[P] || {};
+    const prev = prevP ? (byPeriodStore[prevP] || {}) : {};
+    const rows = Object.values(cur).slice().sort((a,b) => Number(b.sales) - Number(a.sales));
+    let html = `<thead><tr><th>Локація</th><th>Місто</th><th>Замовлення</th><th>Продажі (₴)</th><th>Скасовані</th><th>Δ замовлень${prevP ? ' vs ' + shortMonth(prevP) : ''}</th></tr></thead><tbody>`;
+    if (!rows.length) html += '<tr><td colspan="6">Немає даних за цей місяць.</td></tr>';
+    for (const r of rows) {
+      const pv = prev[r.provider_id];
+      let deltaTxt = '—', col = 'var(--muted)';
+      if (pv) {
+        const dd = Number(r.delivered) - Number(pv.delivered);
+        col = dd > 0 ? 'var(--green)' : dd < 0 ? 'var(--red)' : 'var(--muted)';
+        deltaTxt = dd > 0 ? '▲ +' + fmt(dd) : dd < 0 ? '▼ −' + fmt(Math.abs(dd)) : '≈ 0';
+      } else { deltaTxt = 'нова'; col = 'var(--green)'; }
+      html += `<tr><td>${r.store||'—'}</td><td>${r.city||'—'}</td><td>${fmt(r.delivered)}</td><td>${uah(r.sales)}</td><td>${fmt(r.cancelled)}</td><td style="color:${col};font-weight:600">${deltaTxt}</td></tr>`;
+    }
+    html += '</tbody>';
+    document.getElementById('m-detail-store-table').innerHTML = html;
+    const sub = document.getElementById('m-detail-loc-sub');
+    if (sub) sub.textContent = '(' + shortMonth(P) + ')';
+  }
+
+  pick.value = periods[periods.length - 1];
+  renderDetail(pick.value);
+  pick.addEventListener('change', () => renderDetail(pick.value));
+})();
 
 // ─── Network activation ───
 (function renderActivation(){
